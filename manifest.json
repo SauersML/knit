@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "knit",
+  "version": "1.0",
+  "description": "Continues posts.",
+  "permissions": ["activeTab"],
+  "host_permissions": ["https://api.hyperbolic.xyz/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.x.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "128": "icon128.png"
+  }
+}
