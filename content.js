@@ -2,6 +2,9 @@ const API_URL = 'https://api.hyperbolic.xyz/v1/completions';
 const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzY290dHNhdWVyc2NAZ21haWwuY29tIiwiaWF0IjoxNzM4MTk2NzYxfQ.tP4K8UBOkUYfdpkmlU_pyxnLpw02MYsRI36IDQAA-kA';
 
 async function streamCompletion(tweetElement, prompt, button) {
+  button.disabled = true;
+  button.textContent = 'Generating...';
+
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -20,6 +23,7 @@ async function streamCompletion(tweetElement, prompt, button) {
 
   if (!response.ok || !response.body) {
     console.error('API response error:', response.statusText);
+    button.textContent = 'Error';
     return;
   }
 
@@ -32,79 +36,77 @@ async function streamCompletion(tweetElement, prompt, button) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    partialProcess(chunk, text => {
-      continuation += text;
-      tweetElement.textContent = prompt + continuation;
-    });
+    buffer += decoder.decode(value, { stream: true });
+
+    let lines = buffer.split('\n');
+    buffer = lines.pop();  // Keep the last incomplete line for next iteration
+
+    for (const line of linesFromChunk(lines)) {
+      if (line === '[DONE]') {
+        button.textContent = 'Done ✅';
+        return;
+      }
+      try {
+        const json = JSON.parse(line);
+        const textChunk = json.choices[0].text;
+        fullText += textChunk;
+        tweetElement.textContent = prompt + fullText;
+      } catch (e) {
+        console.error('JSON parse error:', e, line);
+      }
+    }
   }
 }
 
-function partialProcess(chunk, callback) {
-  const lines = chunk.split('\n');
-  for (let line of lines) {
-    line = line.trim();
+function* linesFromChunk(lines) {
+  for (const line of lines) {
     if (line.startsWith('data:')) {
-      const data = line.slice(5).trim();
-      if (data === '[DONE]') return;
-
-      try {
-        const json = JSON.parse(data);
-        const text = json.choices[0].text;
-        callback(text);
-      } catch (e) {
-        console.error('Error parsing JSON:', e);
-      }
+      yield line.replace(/^data:\s*/, '');
     }
+  }
 }
 
 function addButton(tweetElement, container) {
   if (container.querySelector('.continue-btn')) return;
 
-  const btn = document.createElement('button');
-  btn.textContent = 'Continue ✨';
-  btn.className = 'continue-btn';
-
-  Object.assign(btn.style, {
+  const button = document.createElement('button');
+  button.textContent = 'Continue ✨';
+  button.className = 'continue-btn';
+  
+  Object.assign(button.style, {
     position: 'absolute',
     bottom: '5px',
     right: '10px',
     padding: '4px 8px',
     fontSize: '12px',
     cursor: 'pointer',
-    background: '#1DA1F2',
-    color: 'white',
+    backgroundColor: '#1DA1F2',
+    color: '#ffffff',
     border: 'none',
     borderRadius: '4px',
     zIndex: '1000'
   });
 
-  btn.onclick = () => {
-    btn.textContent = 'Continuing...';
+  button.onclick = () => {
     const prompt = tweetElement.textContent.trim() + ' ';
-    streamCompletion(tweetElement, prompt).then(() => {
-      btn.remove();
-    }).catch(e => {
-      btn.textContent = 'Error';
+    streamCompletion(tweetElement, prompt, button).catch(e => {
+      button.textContent = 'Error';
       console.error(e);
     });
   };
 
   container.style.position = 'relative';
-  container.appendChild(btn);
+  container.appendChild(button);
 }
 
 function setupTweetButtons() {
   document.querySelectorAll('article').forEach(article => {
-    const tweet = article.querySelector('div[data-testid="tweetText"]');
-    if (!tweet) return;
-
-    addButton(tweet, article);
+    const tweetElement = article.querySelector('div[data-testid="tweetText"]');
+    if (tweetElement) {
+      addButton(tweetElement, article);
+    }
   });
 }
-
-const decoder = new TextDecoder('utf-8');
-let continuation = '';
 
 const observer = new MutationObserver(setupTweetButtons);
 observer.observe(document.body, { childList: true, subtree: true });
