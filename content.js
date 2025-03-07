@@ -1,5 +1,5 @@
 const API_URL = 'https://api.hyperbolic.xyz/v1/completions';
-const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmbGlwaW5zcGFjZTRAZ21haWwuY29tIiwiaWF0IjoxNzQxMzEwNTk4fQ.9NnAlAj2eGd63QrItRCyKBuvHq3zjkulFUYwLf_xw2U';
+const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzY290dHNhdWVyc2NAZ21haWwuY29tIiwiaWF0IjoxNzM4MTk2NzYxfQ.tP4K8UBOkUYfdpkmlU_pyxnLpw02MYsRI36IDQAA-kA';
 
 async function streamCompletion(tweetElement, prompt) {
   const response = await fetch(API_URL, {
